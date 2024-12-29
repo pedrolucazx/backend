@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
+import { PAGE_SIZE } from 'src/utils/constants';
 
 @Injectable()
 export class UsersService {
@@ -18,9 +19,10 @@ export class UsersService {
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<User> {
+    const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
     const user = this.usersRepository.create({
-      email: createUserDto?.email,
-      password: await bcrypt.hash(createUserDto?.password, 10),
+      email: createUserDto.email,
+      password: hashedPassword,
     });
     return await this.usersRepository.save(user);
   }
@@ -31,25 +33,24 @@ export class UsersService {
     currentPage: number;
     totalPage: number;
   }> {
-    const take = 10;
-    const skip = (page - 1) * take;
+    const skip = (page - 1) * PAGE_SIZE;
     const [data, total] = await this.usersRepository.findAndCount({
-      take,
+      take: PAGE_SIZE,
       skip,
     });
     return {
       data,
       total,
       currentPage: page,
-      totalPage: Math.ceil(total / take),
+      totalPage: Math.ceil(total / PAGE_SIZE),
     };
   }
 
   async findByParams(queryParams: {
     id?: number;
     email?: string;
-  }): Promise<User | null> {
-    if (queryParams?.id == null && queryParams?.email == null) {
+  }): Promise<User> {
+    if (!queryParams.id && !queryParams.email) {
       throw new BadRequestException(
         'Pelo menos um parâmetro (id ou e-mail) deve ser fornecido',
       );
@@ -65,17 +66,13 @@ export class UsersService {
     id: number,
     updateUserDto: UpdateUserDto,
   ): Promise<Omit<User, 'password'>> {
-    const updated = await this.usersRepository.update(id, updateUserDto);
+    const user = await this.findByParams({ id });
+    if (!user) throw new NotFoundException('Usuário não encontrado');
 
-    if (!updated) {
-      throw new NotFoundException('Usuário não encontrado');
-    }
+    await this.usersRepository.update(id, updateUserDto);
 
-    const { email, role, createdAt, updatedAt } = await this.findByParams({
-      id,
-    });
-
-    return { id, email, role, createdAt, updatedAt };
+    const { password, ...updatedUser } = user;
+    return updatedUser;
   }
 
   remove(id: number) {
