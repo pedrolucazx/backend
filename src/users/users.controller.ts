@@ -7,12 +7,14 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { User } from './entities/user.entity';
+import { AuthGuard } from 'src/auth/auth.guard';
 
 @ApiTags('Usuários')
 @Controller('users')
@@ -27,6 +29,7 @@ export class UsersController {
     return await this.usersService.create(createUserDto);
   }
 
+  @UseGuards(AuthGuard)
   @Get()
   @ApiQuery({
     name: 'page',
@@ -37,6 +40,7 @@ export class UsersController {
     status: 200,
     description: 'Lista de usuários retornada com sucesso.',
   })
+  @ApiBearerAuth('JWT-auth')
   async findAll(@Query('page') page: string = '1'): Promise<{
     total: number;
     data: Omit<User, 'password'>[];
