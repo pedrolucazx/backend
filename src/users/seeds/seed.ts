@@ -16,11 +16,11 @@ async function seed() {
       password: hashedPassword,
       role: UserRole.ADMIN,
     },
-    {
-      email: 'common@example.com',
+    ...Array.from({ length: 100 }, (_, index) => ({
+      email: `common${index}@example.com`,
       password: hashedPassword,
       role: UserRole.COMMON,
-    },
+    })),
   ];
 
   for (const userData of users) {
@@ -30,7 +30,6 @@ async function seed() {
     if (!userExists) {
       const user = userRepository.create(userData);
       await userRepository.save(user);
-      console.log(`User ${user.email} created.`);
     } else {
       console.log(`User ${userData.email} already exists.`);
     }

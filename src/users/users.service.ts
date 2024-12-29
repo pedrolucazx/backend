@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { Repository } from 'typeorm';
@@ -21,8 +25,24 @@ export class UsersService {
     return await this.usersRepository.save(user);
   }
 
-  findAll() {
-    return `This action returns all users`;
+  async findAll(page: number = 1): Promise<{
+    total: number;
+    data: User[];
+    currentPage: number;
+    totalPage: number;
+  }> {
+    const take = 10;
+    const skip = (page - 1) * take;
+    const [data, total] = await this.usersRepository.findAndCount({
+      take,
+      skip,
+    });
+    return {
+      data,
+      total,
+      currentPage: page,
+      totalPage: Math.ceil(total / take),
+    };
   }
 
   findOne(id: number) {
