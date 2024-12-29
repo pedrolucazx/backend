@@ -20,7 +20,7 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  @ApiResponse({ status: 201, description: 'User created successfully.' })
+  @ApiResponse({ status: 201, description: 'Usuário criado com sucesso.' })
   create(@Body() createUserDto: CreateUserDto) {
     return this.usersService.create(createUserDto);
   }
@@ -49,6 +49,10 @@ export class UsersController {
   }
 
   @Delete(':id')
+  @ApiResponse({
+    status: 204,
+    description: 'Usuário foi deletado com sucesso!',
+  })
   remove(@Param('id') id: string) {
     return this.usersService.remove(+id);
   }

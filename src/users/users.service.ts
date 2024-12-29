@@ -75,7 +75,11 @@ export class UsersService {
     return updatedUser;
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} user`;
+  async remove(id: number): Promise<string> {
+    const user = await this.findByParams({ id });
+    if (!user) throw new NotFoundException('Usuário não encontrado');
+    await this.usersRepository.delete(id);
+
+    return `Usuário com ID ${id} foi deletado com sucesso!`;
   }
 }
