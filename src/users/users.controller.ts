@@ -11,7 +11,8 @@ import {
 import { CreateUserDto } from './dto/create-user.dto';
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { User } from './entities/user.entity';
 
 @ApiTags('Usuários')
 @Controller('users')
@@ -30,9 +31,15 @@ export class UsersController {
     return this.usersService.findAll(Number(page));
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.usersService.findOne(+id);
+  @Get('find')
+  @ApiResponse({ status: 200 })
+  @ApiQuery({ name: 'id', required: false, type: Number })
+  @ApiQuery({ name: 'email', required: false, type: String })
+  async findByParams(
+    @Query('id') id?: number,
+    @Query('email') email?: string,
+  ): Promise<User | null> {
+    return this.usersService.findByParams({ id, email });
   }
 
   @Patch(':id')

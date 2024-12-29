@@ -45,8 +45,23 @@ export class UsersService {
     };
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} user`;
+  async findByParams(queryParams: {
+    id?: number;
+    email?: string;
+  }): Promise<User | null> {
+    if (queryParams?.id == null && queryParams?.email == null) {
+      throw new BadRequestException(
+        'At least one parameter (id or email) must be provided',
+      );
+    }
+
+    const user = await this.usersRepository.findOne({
+      where: queryParams,
+    });
+
+    if (!user) throw new NotFoundException('User not found');
+
+    return user;
   }
 
   update(id: number, updateUserDto: UpdateUserDto) {
