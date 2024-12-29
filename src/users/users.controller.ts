@@ -21,39 +21,61 @@ export class UsersController {
 
   @Post()
   @ApiResponse({ status: 201, description: 'Usuário criado com sucesso.' })
-  create(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.create(createUserDto);
+  async create(
+    @Body() createUserDto: CreateUserDto,
+  ): Promise<Omit<User, 'password'>> {
+    return await this.usersService.create(createUserDto);
   }
 
   @Get()
-  @ApiResponse({ status: 200 })
-  findAll(@Query('page') page: string) {
-    return this.usersService.findAll(Number(page));
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    description: 'Número da página para paginação',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de usuários retornada com sucesso.',
+  })
+  async findAll(@Query('page') page: string = '1'): Promise<{
+    total: number;
+    data: Omit<User, 'password'>[];
+    currentPage: number;
+    totalPage: number;
+  }> {
+    const pageNumber = Number(page);
+    return await this.usersService.findAll(pageNumber);
   }
 
   @Get('find')
-  @ApiResponse({ status: 200 })
-  @ApiQuery({ name: 'id', required: false, type: Number })
-  @ApiQuery({ name: 'email', required: false, type: String })
+  @ApiQuery({ name: 'id', required: false, description: 'ID do usuário' })
+  @ApiQuery({ name: 'email', required: false, description: 'Email do usuário' })
+  @ApiResponse({ status: 200, description: 'Usuário encontrado.' })
+  @ApiResponse({
+    status: 400,
+    description: 'Parâmetros inválidos, forneça pelo menos id ou email.',
+  })
   async findByParams(
     @Query('id') id?: number,
     @Query('email') email?: string,
-  ): Promise<User | null> {
-    return this.usersService.findByParams({ id, email });
+  ): Promise<Omit<User, 'password'>> {
+    return await this.usersService.findByParams({ id, email });
   }
 
   @Patch(':id')
-  @ApiResponse({ status: 200 })
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.usersService.update(+id, updateUserDto);
+  @ApiResponse({ status: 200, description: 'Usuário atualizado com sucesso.' })
+  @ApiResponse({ status: 404, description: 'Usuário não encontrado.' })
+  async update(
+    @Param('id') id: string,
+    @Body() updateUserDto: UpdateUserDto,
+  ): Promise<Omit<User, 'password'>> {
+    return await this.usersService.update(+id, updateUserDto);
   }
 
   @Delete(':id')
-  @ApiResponse({
-    status: 204,
-    description: 'Usuário foi deletado com sucesso!',
-  })
-  remove(@Param('id') id: string) {
-    return this.usersService.remove(+id);
+  @ApiResponse({ status: 204, description: 'Usuário deletado com sucesso!' })
+  @ApiResponse({ status: 404, description: 'Usuário não encontrado.' })
+  async remove(@Param('id') id: string): Promise<string> {
+    return await this.usersService.remove(+id);
   }
 }

@@ -18,18 +18,20 @@ export class UsersService {
     private usersRepository: Repository<User>,
   ) {}
 
-  async create(createUserDto: CreateUserDto): Promise<User> {
+  async create(createUserDto: CreateUserDto): Promise<Omit<User, 'password'>> {
     const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
     const user = this.usersRepository.create({
       email: createUserDto.email,
       password: hashedPassword,
     });
-    return await this.usersRepository.save(user);
+    const { password, ...createdUser } = await this.usersRepository.save(user);
+
+    return createdUser;
   }
 
   async findAll(page: number = 1): Promise<{
     total: number;
-    data: User[];
+    data: Omit<User, 'password'>[];
     currentPage: number;
     totalPage: number;
   }> {
@@ -39,7 +41,7 @@ export class UsersService {
       skip,
     });
     return {
-      data,
+      data: data?.map(({ password, ...user }) => user),
       total,
       currentPage: page,
       totalPage: Math.ceil(total / PAGE_SIZE),
@@ -49,16 +51,17 @@ export class UsersService {
   async findByParams(queryParams: {
     id?: number;
     email?: string;
-  }): Promise<User> {
+  }): Promise<Omit<User, 'password'>> {
     if (!queryParams.id && !queryParams.email) {
       throw new BadRequestException(
         'Pelo menos um parâmetro (id ou e-mail) deve ser fornecido',
       );
     }
-    const user = await this.usersRepository.findOne({
+    const { password, ...user } = await this.usersRepository.findOne({
       where: queryParams,
     });
     if (!user) throw new NotFoundException('Usuário não encontrado');
+
     return user;
   }
 
@@ -66,20 +69,17 @@ export class UsersService {
     id: number,
     updateUserDto: UpdateUserDto,
   ): Promise<Omit<User, 'password'>> {
+    const updatedUser = await this.usersRepository.update(id, updateUserDto);
+    if (!updatedUser) throw new NotFoundException('Usuário não encontrado');
     const user = await this.findByParams({ id });
-    if (!user) throw new NotFoundException('Usuário não encontrado');
 
-    await this.usersRepository.update(id, updateUserDto);
-
-    const { password, ...updatedUser } = user;
-    return updatedUser;
+    return user;
   }
 
   async remove(id: number): Promise<string> {
     const user = await this.findByParams({ id });
     if (!user) throw new NotFoundException('Usuário não encontrado');
     await this.usersRepository.delete(id);
-
     return `Usuário com ID ${id} foi deletado com sucesso!`;
   }
 }
