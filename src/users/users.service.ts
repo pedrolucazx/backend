@@ -51,21 +51,31 @@ export class UsersService {
   }): Promise<User | null> {
     if (queryParams?.id == null && queryParams?.email == null) {
       throw new BadRequestException(
-        'At least one parameter (id or email) must be provided',
+        'Pelo menos um parâmetro (id ou e-mail) deve ser fornecido',
       );
     }
-
     const user = await this.usersRepository.findOne({
       where: queryParams,
     });
-
-    if (!user) throw new NotFoundException('User not found');
-
+    if (!user) throw new NotFoundException('Usuário não encontrado');
     return user;
   }
 
-  update(id: number, updateUserDto: UpdateUserDto) {
-    return `This action updates a #${id} user`;
+  async update(
+    id: number,
+    updateUserDto: UpdateUserDto,
+  ): Promise<Omit<User, 'password'>> {
+    const updated = await this.usersRepository.update(id, updateUserDto);
+
+    if (!updated) {
+      throw new NotFoundException('Usuário não encontrado');
+    }
+
+    const { email, role, createdAt, updatedAt } = await this.findByParams({
+      id,
+    });
+
+    return { id, email, role, createdAt, updatedAt };
   }
 
   remove(id: number) {
