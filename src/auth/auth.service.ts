@@ -1,10 +1,16 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from 'src/users/entities/user.entity';
 import { Repository } from 'typeorm';
 import { SignInDto } from './dto/signIn.dto';
+import { MailerService } from '@nestjs-modules/mailer';
+import { randomBytes } from 'crypto';
 
 @Injectable()
 export class AuthService {
@@ -12,6 +18,7 @@ export class AuthService {
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     private jwtService: JwtService,
+    private mailerService: MailerService,
   ) {}
 
   async signIn(signInDto: SignInDto): Promise<{ access_token: string }> {
@@ -31,5 +38,25 @@ export class AuthService {
     return {
       access_token: await this.jwtService.signAsync(payload),
     };
+  }
+
+  async resetPassword(email: string): Promise<void> {
+    const user = await this.usersRepository.findOne({ where: { email } });
+
+    if (!user) throw new NotFoundException('Usuário não encontrado');
+
+    const newPassword = randomBytes(8).toString('hex');
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+
+    await this.usersRepository.save(user);
+
+    await this.mailerService.sendMail({
+      from: 'Pedro Mesquita <pedrolucazxmesquita@gmail.com>',
+      to: email,
+      subject: 'Reset de Senha',
+      text: `Sua nova senha é: ${newPassword}`,
+    });
   }
 }
