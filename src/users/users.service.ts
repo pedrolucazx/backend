@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -8,7 +9,7 @@ import * as bcrypt from 'bcrypt';
 import { Repository } from 'typeorm';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { User } from './entities/user.entity';
+import { User, UserRole } from './entities/user.entity';
 import { PAGE_SIZE } from 'src/utils/constants';
 
 @Injectable()
@@ -69,17 +70,33 @@ export class UsersService {
     id: number,
     updateUserDto: UpdateUserDto,
   ): Promise<Omit<User, 'password'>> {
-    const updatedUser = await this.usersRepository.update(id, updateUserDto);
-    if (!updatedUser) throw new NotFoundException('Usuário não encontrado');
-    const user = await this.findByParams({ id });
+    const user = await this.findUserById(id);
 
-    return user;
+    if (updateUserDto?.role && user?.role !== UserRole.ADMIN) {
+      throw new ForbiddenException(
+        'Apenas administradores podem alterar o papel do usuário',
+      );
+    }
+    const hashedPassword = await bcrypt.hash(updateUserDto.password, 10);
+    await this.usersRepository.update(id, {
+      ...updateUserDto,
+      password: hashedPassword,
+    });
+
+    const { password, ...updatedUser } = await this.findUserById(id);
+    return updatedUser;
   }
 
   async remove(id: number): Promise<string> {
-    const user = await this.findByParams({ id });
-    if (!user) throw new NotFoundException('Usuário não encontrado');
+    await this.findUserById(id);
+
     await this.usersRepository.delete(id);
     return `Usuário com ID ${id} foi deletado com sucesso!`;
+  }
+
+  private async findUserById(id: number): Promise<User> {
+    const user = await this.usersRepository.findOne({ where: { id } });
+    if (!user) throw new NotFoundException('Usuário não encontrado');
+    return user;
   }
 }

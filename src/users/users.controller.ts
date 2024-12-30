@@ -9,12 +9,15 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UsersService } from './users.service';
-import { UpdateUserDto } from './dto/update-user.dto';
 import { ApiBearerAuth, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { User } from './entities/user.entity';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { Roles } from 'src/auth/roles.decorator';
+import { RolesGuard } from 'src/auth/roles.guard';
+import { UserRole } from 'src/users/entities/user.entity';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { User } from './entities/user.entity';
+import { UsersService } from './users.service';
 
 @ApiTags('Usuários')
 @Controller('users')
@@ -51,6 +54,7 @@ export class UsersController {
     return await this.usersService.findAll(pageNumber);
   }
 
+  @UseGuards(AuthGuard)
   @Get('find')
   @ApiQuery({ name: 'id', required: false, description: 'ID do usuário' })
   @ApiQuery({ name: 'email', required: false, description: 'Email do usuário' })
@@ -59,6 +63,7 @@ export class UsersController {
     status: 400,
     description: 'Parâmetros inválidos, forneça pelo menos id ou email.',
   })
+  @ApiBearerAuth('JWT-auth')
   async findByParams(
     @Query('id') id?: number,
     @Query('email') email?: string,
@@ -66,9 +71,11 @@ export class UsersController {
     return await this.usersService.findByParams({ id, email });
   }
 
+  @UseGuards(AuthGuard)
   @Patch(':id')
   @ApiResponse({ status: 200, description: 'Usuário atualizado com sucesso.' })
   @ApiResponse({ status: 404, description: 'Usuário não encontrado.' })
+  @ApiBearerAuth('JWT-auth')
   async update(
     @Param('id') id: string,
     @Body() updateUserDto: UpdateUserDto,
@@ -76,9 +83,12 @@ export class UsersController {
     return await this.usersService.update(+id, updateUserDto);
   }
 
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
   @Delete(':id')
   @ApiResponse({ status: 204, description: 'Usuário deletado com sucesso!' })
   @ApiResponse({ status: 404, description: 'Usuário não encontrado.' })
+  @ApiBearerAuth('JWT-auth')
   async remove(@Param('id') id: string): Promise<string> {
     return await this.usersService.remove(+id);
   }
